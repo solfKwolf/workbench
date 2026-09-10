@@ -1,0 +1,21 @@
+# Maven
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# 日志
+logs/
+*.log
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 本地环境覆盖（不提交）
+application-local.yml

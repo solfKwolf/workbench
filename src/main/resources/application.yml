@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: workbench
+  profiles:
+    active: dev
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true   # created_at <-> createdAt 自动映射
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health   # 最小暴露面，仅健康检查

@@ -402,7 +402,7 @@ Expected 日志（顺序出现）：
 - `Migrating schema "public" to version "1 - init schema"`
 - `Migrating schema "public" to version "2 - seed admin"`
 - `Successfully applied 2 migrations`
-- `Tomcat started on port 8080`
+- `Tomcat started on port 8090`
 
 看到 Tomcat started 后 `Ctrl+C` 停止。
 
@@ -1308,9 +1308,9 @@ Expected: `BUILD SUCCESS`，`Tests run: 11, Failures: 0`（含 @SpringBootTest �
 Run: `mvn spring-boot:run`（另开一个终端）
 
 ```bash
-curl.exe http://localhost:8080/actuator/health
-curl.exe http://localhost:8080/api/auth/me
-curl.exe http://localhost:8080/api/auth/me -H "Authorization: Bearer invalid.token.here"
+curl.exe http://localhost:8090/actuator/health
+curl.exe http://localhost:8090/api/auth/me
+curl.exe http://localhost:8090/api/auth/me -H "Authorization: Bearer invalid.token.here"
 ```
 Expected:
 - 第一条：`{"status":"UP"}`
@@ -1658,21 +1658,21 @@ Expected: `BUILD SUCCESS`，`Tests run: 16, Failures: 0`
 Run: `mvn spring-boot:run`（另开终端执行；注意 PowerShell 下 JSON 要用单引号包裹、内部双引号转义）
 
 ```bash
-curl.exe -X POST http://localhost:8080/api/auth/register -H "Content-Type: application/json" -d '{\"username\":\"zhangsan\",\"password\":\"123456\",\"email\":\"zhangsan@test.com\"}'
+curl.exe -X POST http://localhost:8090/api/auth/register -H "Content-Type: application/json" -d '{\"username\":\"zhangsan\",\"password\":\"123456\",\"email\":\"zhangsan@test.com\"}'
 ```
 Expected: `{"code":200,"message":"success","data":null}`
 
 ```bash
-curl.exe -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/json" -d '{\"username\":\"admin\",\"password\":\"123456\"}'
+curl.exe -X POST http://localhost:8090/api/auth/login -H "Content-Type: application/json" -d '{\"username\":\"admin\",\"password\":\"123456\"}'
 ```
 Expected: `{"code":200,...,"data":{"token":"eyJhbGciOiJIUzI1NiJ9...","user":{...}}}`——复制 token
 
 ```bash
-curl.exe http://localhost:8080/api/auth/me -H "Authorization: Bearer <粘贴token>"
+curl.exe http://localhost:8090/api/auth/me -H "Authorization: Bearer <粘贴token>"
 ```
 Expected: `{"code":200,...,"data":{"id":1,"username":"admin","email":"admin@workbench.com","createdAt":"..."}}`
 
-浏览器打开 `http://localhost:8080/swagger-ui.html` 确认三个接口可见、Authorize 按钮可用。`Ctrl+C` 停止。
+浏览器打开 `http://localhost:8090/swagger-ui.html` 确认三个接口可见、Authorize 按钮可用。`Ctrl+C` 停止。
 
 - [ ] **Step 5: 提交**
 
@@ -1819,7 +1819,7 @@ Expected: `BUILD SUCCESS`，`Tests run: 16, Failures: 0`
 Run: `mvn spring-boot:run`，另开终端登录一次：
 
 ```bash
-curl.exe -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/json" -d '{\"username\":\"admin\",\"password\":\"123456\"}'
+curl.exe -X POST http://localhost:8090/api/auth/login -H "Content-Type: application/json" -d '{\"username\":\"admin\",\"password\":\"123456\"}'
 ```
 
 Expected：
@@ -1862,7 +1862,7 @@ Run: `mvn spring-boot:run`，逐项验证（curl.exe 或 Swagger UI 均可）：
 | 7 | `GET /me` 不带 token | 401，`未登录或token缺失` |
 | 8 | `GET /me` 带伪造 token | 401，`token 无效或已过期` |
 | 9 | `GET /me` 带合法 token | 200，返回 admin 信息 |
-| 10 | 浏览器 `http://localhost:8080/swagger-ui.html` | 三接口可见，Authorize 可用 |
+| 10 | 浏览器 `http://localhost:8090/swagger-ui.html` | 三接口可见，Authorize 可用 |
 | 11 | 查库 `SELECT username FROM sys_user;` | admin + zhangsan |
 
 `Ctrl+C` 停止。

@@ -317,7 +317,7 @@ return new LoginVO(token, userConvert.toVO(user));   // MapStruct 转 UserVO（�
 | GET | /api/auth/me | 当前登录用户信息 | 是 |
 | GET | /actuator/health | 健康检查 | 否 |
 
-Swagger UI：`http://localhost:8080/swagger-ui.html`，配置 Bearer 鉴权方案后可在页面上点 Authorize 输入 token 调试受保护接口。
+Swagger UI：`http://localhost:8090/swagger-ui.html`，配置 Bearer 鉴权方案后可在页面上点 Authorize 输入 token 调试受保护接口。
 
 ### 6.2 DTO 与校验规则
 

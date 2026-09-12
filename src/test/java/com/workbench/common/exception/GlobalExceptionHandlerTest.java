@@ -2,8 +2,10 @@ package com.workbench.common.exception;
 
 import com.workbench.common.result.R;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,6 +38,16 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<R<Void>> resp = handler.handleMessageNotReadable(ex);
         assertThat(resp.getStatusCode().value()).isEqualTo(400);
         assertThat(resp.getBody().getMessage()).isEqualTo("请求体缺失或格式错误");
+    }
+
+    @Test
+    void handleNoResource_returns404() {
+        ResponseEntity<R<Void>> resp = handler.handleNoResource(
+                new NoResourceFoundException(HttpMethod.GET, "/not-exist"));
+
+        assertThat(resp.getStatusCode().value()).isEqualTo(404);
+        assertThat(resp.getBody().getCode()).isEqualTo(404);
+        assertThat(resp.getBody().getMessage()).isEqualTo("资源不存在");
     }
 
     @Test

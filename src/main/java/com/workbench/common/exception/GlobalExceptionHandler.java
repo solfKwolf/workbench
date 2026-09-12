@@ -7,6 +7,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -17,6 +18,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<R<Void>> handleBusiness(BusinessException e) {
         log.warn("业务异常: code={}, message={}", e.getCode(), e.getMessage());
         return ResponseEntity.status(e.getCode()).body(R.fail(e.getCode(), e.getMessage()));
+    }
+
+    /** 路径不存在（Spring 6.1+ 由静态资源处理器抛出，须早于兜底的 Exception 处理器命中） */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<R<Void>> handleNoResource(NoResourceFoundException e) {
+        return ResponseEntity.status(404).body(R.fail(404, "资源不存在"));
     }
 
     /** @Valid 参数校验失败：取第一条字段错误 */

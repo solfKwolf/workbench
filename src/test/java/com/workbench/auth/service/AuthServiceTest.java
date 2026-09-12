@@ -65,13 +65,44 @@ class AuthServiceTest {
         when(userMapper.selectOne(any())).thenReturn(null);
         when(passwordEncoder.encode("123456")).thenReturn("$2a$10$encoded-hash");
 
-        authService.register(registerReq());
+        RegisterRequest req = registerReq();
+        req.setTimezone("America/New_York");
+        authService.register(req);
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userMapper).insert(captor.capture());
         assertThat(captor.getValue().getPassword())
                 .isEqualTo("$2a$10$encoded-hash")      // 入库的是哈希
                 .isNotEqualTo("123456");               // 而非明文
+        assertThat(captor.getValue().getTimezone()).isEqualTo("America/New_York");
+    }
+
+    @Test
+    void register_blankTimezone_defaultsToUtc() {
+        when(userMapper.selectOne(any())).thenReturn(null);
+        when(passwordEncoder.encode("123456")).thenReturn("$2a$10$encoded-hash");
+
+        RegisterRequest req = registerReq();
+        req.setTimezone("  ");
+        authService.register(req);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userMapper).insert(captor.capture());
+        assertThat(captor.getValue().getTimezone()).isEqualTo("UTC");
+    }
+
+    @Test
+    void register_invalidTimezone_throws400() {
+        when(userMapper.selectOne(any())).thenReturn(null);
+
+        RegisterRequest req = registerReq();
+        req.setTimezone("Mars/Olympus_Mons");
+
+        assertThatThrownBy(() -> authService.register(req))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(400))
+                .hasMessageContaining("无效的时区标识");
+        verify(userMapper, never()).insert(any(User.class));
     }
 
     @Test

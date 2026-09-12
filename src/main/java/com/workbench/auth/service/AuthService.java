@@ -15,6 +15,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.DateTimeException;
+import java.time.ZoneId;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -36,8 +39,21 @@ public class AuthService {
         user.setUsername(req.getUsername());
         user.setEmail(req.getEmail());
         user.setPassword(passwordEncoder.encode(req.getPassword()));  // 随机盐哈希
+        user.setTimezone(resolveTimezone(req.getTimezone()));
         userMapper.insert(user);
         log.info("用户注册成功: {}", req.getUsername());
+    }
+
+    /** 时区解析：空白 -> UTC；非法 IANA ID -> 400。ZoneId.of 校验的是规则本身（含夏令时），比正则可靠 */
+    private String resolveTimezone(String timezone) {
+        if (timezone == null || timezone.isBlank()) {
+            return "UTC";
+        }
+        try {
+            return ZoneId.of(timezone.trim()).getId();
+        } catch (DateTimeException e) {
+            throw new BusinessException(400, "无效的时区标识: " + timezone);
+        }
     }
 
     /** 登录：查用户 -> matches 比对 -> 签发 token */

@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @TableName("sys_user")
@@ -23,7 +23,11 @@ public class User {
 
     private Boolean enabled;
 
-    private LocalDateTime createdAt;
+    /** 绝对时刻（UTC 时间线上的点），对应数据库 timestamptz，时区只影响展示 */
+    private Instant createdAt;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
+
+    /** 用户偏好时区（IANA ID，如 Asia/Shanghai），仅用于前端渲染换算 */
+    private String timezone;
 }

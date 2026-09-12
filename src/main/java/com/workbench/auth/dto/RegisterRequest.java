@@ -26,4 +26,8 @@ public class RegisterRequest {
     @Schema(description = "邮箱（可选）", example = "zhangsan@test.com")
     @Email(message = "邮箱格式不正确")
     private String email;
+
+    @Schema(description = "用户时区（可选，IANA ID），缺省为 UTC；合法性由服务端用 ZoneId.of 校验", example = "Asia/Shanghai")
+    @Size(max = 64, message = "时区标识过长")
+    private String timezone;
 }

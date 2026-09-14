@@ -34,7 +34,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html",
-                                 "/v3/api-docs/**", "/actuator/health").permitAll()
+                                 "/v3/api-docs/**", "/actuator/health",
+                                 "/doc.html", "/webjars/**", "/knife4j/**").permitAll()
                 .anyRequest().authenticated())
             // 未认证（无 token）访问受保护接口 -> 401 JSON（Spring 默认是 403 空响应，不符合前端习惯）
             .exceptionHandling(e -> e.authenticationEntryPoint((request, response, ex) -> {

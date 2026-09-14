@@ -20,7 +20,7 @@ public class WorkbenchApplication {
         SpringApplication.run(WorkbenchApplication.class, args);
     }
 
-    /** 启动完成后打印一行可复制的地址：服务 + Swagger（仅 dev/profile 下有） */
+    /** 启动完成后打印一行可复制的地址：服务 + Knife4j（仅 dev/profile 下有） */
     @EventListener(WebServerInitializedEvent.class)
     public void printStartupBanner(WebServerInitializedEvent event) {
         int port = event.getWebServer().getPort();
@@ -29,8 +29,9 @@ public class WorkbenchApplication {
 
         log.info("▸ 服务已启动: {}", base);
         if (Boolean.parseBoolean(env.getProperty("springdoc.api-docs.enabled", "true"))) {
-            log.info("▸ API 文档: {}/swagger-ui/index.html", base);
-            log.info("▸ OpenAPI : {}/v3/api-docs", base);
+            log.info("▸ API 文档(Knife4j): {}/doc.html", base);
+            log.info("▸ Swagger UI(原生):   {}/swagger-ui/index.html", base);
+            log.info("▸ OpenAPI JSON:       {}/v3/api-docs", base);
         }
     }
 }

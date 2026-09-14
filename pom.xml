@@ -76,11 +76,16 @@
             <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
-        <!-- 接口文档 -->
+        <!-- 接口文档：Springdoc OpenAPI + Knife4j 增强 UI（中文界面、全局参数、离线导出） -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+            <version>4.5.0</version>
         </dependency>
 
         <!-- JWT（api 编译期；impl/jackson 运行期） -->

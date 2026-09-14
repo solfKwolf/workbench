@@ -128,11 +128,26 @@ class AuthServiceTest {
     }
 
     @Test
+    void login_userDisabled_throws403() {
+        User user = new User();
+        user.setPassword("$2a$10$stored-hash");
+        user.setEnabled(false);   // 禁用
+        when(userMapper.selectOne(any())).thenReturn(user);
+        when(passwordEncoder.matches("123456", "$2a$10$stored-hash")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.login(loginReq()))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(403))
+                .hasMessage("账号已被禁用，请联系管理员");
+    }
+
+    @Test
     void login_success_returnsTokenAndVO() {
         User user = new User();
         user.setId(1L);
         user.setUsername("admin");
         user.setPassword("$2a$10$stored-hash");
+        user.setEnabled(true);   // 确保不被禁用检查拦截
         when(userMapper.selectOne(any())).thenReturn(user);
         when(passwordEncoder.matches("123456", "$2a$10$stored-hash")).thenReturn(true);
         when(jwtUtil.generateToken(1L, "admin")).thenReturn("mock-token");

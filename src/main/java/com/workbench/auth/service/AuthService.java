@@ -56,13 +56,16 @@ public class AuthService {
         }
     }
 
-    /** 登录：查用户 -> matches 比对 -> 签发 token */
+    /** 登录：查用户 -> 比对密码 -> 检查 enabled -> 签发 token */
     public LoginVO login(LoginRequest req) {
         User user = userMapper.selectOne(new LambdaQueryWrapper<User>()
                 .eq(User::getUsername, req.getUsername()));
         // 用户不存在与密码错误统一提示，防止撞库探测
         if (user == null || !passwordEncoder.matches(req.getPassword(), user.getPassword())) {
             throw new BusinessException(401, "用户名或密码错误");
+        }
+        if (!Boolean.TRUE.equals(user.getEnabled())) {
+            throw new BusinessException(403, "账号已被禁用，请联系管理员");
         }
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());
         return new LoginVO(token, userConvert.toVO(user));

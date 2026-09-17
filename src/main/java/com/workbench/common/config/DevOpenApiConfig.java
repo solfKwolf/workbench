@@ -8,8 +8,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
 /**
- * Dev 环境 OpenAPI 增强：自动注入 x-mock-user-id 全局 header。
- * 打开 Knife4j 页面 → 全局参数里直接有，每个调试请求自动带，不用手动加。
+ * Dev 环境 OpenAPI 增强：自动给受保护接口注入 x-mock-user-id header。
+ * Knife4j 调试页面会直接显示这个 header 参数，填值即可绕过 JWT 鉴权。
  *
  * <p>prod 环境不加载（@Profile("dev")），不影响线上 OpenAPI specs。
  */
@@ -17,21 +17,16 @@ import org.springframework.context.annotation.Profile;
 @Profile("dev")
 public class DevOpenApiConfig {
 
+    private static final Parameter MOCK_USER_HEADER = new Parameter()
+            .name("x-mock-user-id")
+            .in("header")
+            .description("Dev Mock 登录：指定用户 ID 跳过 JWT 鉴权")
+            .required(false)
+            .example("1");
+
     @Bean
     public GlobalOpenApiCustomizer mockUserHeaderInjector() {
         return (OpenAPI openApi) -> {
-            // 在 components/parameters 里定义可复用的 parameter
-            Parameter mockUserIdHeader = new Parameter()
-                    .name("x-mock-user-id")
-                    .in("header")
-                    .description("Dev Mock 登录：指定用户 ID 跳过 JWT")
-                    .required(false)
-                    .example("1");
-
-            openApi.getComponents()
-                    .addParameters("mockUserIdHeader", mockUserIdHeader);
-
-            // 给所有受保护的接口（除 login/register/refresh）自动引用这个 header
             openApi.getPaths().forEach((path, item) -> {
                 item.readOperations().forEach(op -> {
                     // 公开接口不加——它们本身就不需要认证
@@ -44,8 +39,7 @@ public class DevOpenApiConfig {
                     boolean alreadyHas = op.getParameters() != null
                             && op.getParameters().stream().anyMatch(p -> "x-mock-user-id".equals(p.getName()));
                     if (!alreadyHas) {
-                        op.addParametersItem(new Parameter()
-                                .$ref("#/components/parameters/mockUserIdHeader"));
+                        op.addParametersItem(MOCK_USER_HEADER);
                     }
                 });
             });

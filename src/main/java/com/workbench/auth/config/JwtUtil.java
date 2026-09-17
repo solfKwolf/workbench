@@ -29,19 +29,30 @@ public class JwtUtil {
     }
 
     public String generateToken(Long userId, String username) {
-        return generateToken(userId, username, jwtProperties.getExpiration());
+        return buildToken(userId, username, "access", jwtProperties.getExpiration());
+    }
+
+    /** 签发 Refresh Token（JWT 格式，7 天有效期，额外带 type=refresh 声明） */
+    public String signRefreshToken(Long userId, String username) {
+        return buildToken(userId, username, "refresh", jwtProperties.getRefreshExpiration());
+    }
+
+    /** 统一构建 JWT（内部方法） */
+    private String buildToken(Long userId, String username, String type, long ttlSeconds) {
+        Date now = new Date();
+        return Jwts.builder()
+                .subject(String.valueOf(userId))
+                .claim("username", username)
+                .claim("type", type)                   // access / refresh
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + ttlSeconds * 1000))
+                .signWith(key)
+                .compact();
     }
 
     /** 包级私有重载：供测试构造已过期 token */
     String generateToken(Long userId, String username, long ttlSeconds) {
-        Date now = new Date();
-        return Jwts.builder()
-                .subject(String.valueOf(userId))       // sub：用户唯一标识
-                .claim("username", username)           // 自定义声明
-                .issuedAt(now)                         // iat
-                .expiration(new Date(now.getTime() + ttlSeconds * 1000))  // exp
-                .signWith(key)                         // 默认 HS256
-                .compact();
+        return buildToken(userId, username, "access", ttlSeconds);
     }
 
     /** 签名错误或过期抛 JwtException 子类 */
@@ -51,6 +62,16 @@ public class JwtUtil {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    /** 解析 Refresh Token 并校验 type 声明 */
+    public Claims parseRefreshToken(String token) {
+        Claims claims = parseToken(token);
+        String type = claims.get("type", String.class);
+        if (!"refresh".equals(type)) {
+            throw new io.jsonwebtoken.JwtException("Invalid token type: expected refresh");
+        }
+        return claims;
     }
 
     public Long getUserId(Claims claims) {

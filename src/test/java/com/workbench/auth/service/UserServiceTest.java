@@ -1,6 +1,7 @@
 package com.workbench.auth.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.workbench.auth.config.RefreshTokenService;
 import com.workbench.auth.convert.UserConvert;
 import com.workbench.auth.dto.ChangePasswordRequest;
 import com.workbench.auth.dto.UpdateProfileRequest;
@@ -34,6 +35,7 @@ class UserServiceTest {
     @Mock private UserMapper userMapper;
     @Mock private UserConvert userConvert;
     @Mock private PasswordEncoder passwordEncoder;
+    @Mock private RefreshTokenService refreshTokenService;
 
     @InjectMocks private UserService userService;
 

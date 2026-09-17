@@ -1,14 +1,18 @@
 package com.workbench.auth.service;
 
 import com.workbench.auth.config.JwtUtil;
+import com.workbench.auth.config.RefreshTokenService;
 import com.workbench.auth.convert.UserConvert;
 import com.workbench.auth.dto.LoginRequest;
 import com.workbench.auth.dto.LoginVO;
+import com.workbench.auth.dto.RefreshRequest;
 import com.workbench.auth.dto.RegisterRequest;
 import com.workbench.auth.dto.UserVO;
 import com.workbench.auth.entity.User;
 import com.workbench.auth.mapper.UserMapper;
 import com.workbench.common.exception.BusinessException;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -31,6 +35,7 @@ class AuthServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtUtil jwtUtil;
     @Mock private UserConvert userConvert;
+    @Mock private RefreshTokenService refreshTokenService;
 
     @InjectMocks private AuthService authService;
 
@@ -49,10 +54,11 @@ class AuthServiceTest {
         return req;
     }
 
+    // ---- register（不变） ----
+
     @Test
     void register_usernameExists_throws400() {
         when(userMapper.selectOne(any())).thenReturn(new User());
-
         assertThatThrownBy(() -> authService.register(registerReq()))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getCode()).isEqualTo(400))
@@ -72,8 +78,8 @@ class AuthServiceTest {
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userMapper).insert(captor.capture());
         assertThat(captor.getValue().getPassword())
-                .isEqualTo("$2a$10$encoded-hash")      // 入库的是哈希
-                .isNotEqualTo("123456");               // 而非明文
+                .isEqualTo("$2a$10$encoded-hash")
+                .isNotEqualTo("123456");
         assertThat(captor.getValue().getTimezone()).isEqualTo("America/New_York");
     }
 
@@ -94,7 +100,6 @@ class AuthServiceTest {
     @Test
     void register_invalidTimezone_throws400() {
         when(userMapper.selectOne(any())).thenReturn(null);
-
         RegisterRequest req = registerReq();
         req.setTimezone("Mars/Olympus_Mons");
 
@@ -105,14 +110,14 @@ class AuthServiceTest {
         verify(userMapper, never()).insert(any(User.class));
     }
 
+    // ---- login（更新：签发双 Token + 存 Redis） ----
+
     @Test
     void login_userNotFound_throws401() {
         when(userMapper.selectOne(any())).thenReturn(null);
-
         assertThatThrownBy(() -> authService.login(loginReq()))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getCode()).isEqualTo(401))
-                .hasMessage("用户名或密码错误");
+                        e -> assertThat(e.getCode()).isEqualTo(401));
     }
 
     @Test
@@ -131,26 +136,26 @@ class AuthServiceTest {
     void login_userDisabled_throws403() {
         User user = new User();
         user.setPassword("$2a$10$stored-hash");
-        user.setEnabled(false);   // 禁用
+        user.setEnabled(false);
         when(userMapper.selectOne(any())).thenReturn(user);
         when(passwordEncoder.matches("123456", "$2a$10$stored-hash")).thenReturn(true);
 
         assertThatThrownBy(() -> authService.login(loginReq()))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getCode()).isEqualTo(403))
-                .hasMessage("账号已被禁用，请联系管理员");
+                        e -> assertThat(e.getCode()).isEqualTo(403));
     }
 
     @Test
-    void login_success_returnsTokenAndVO() {
+    void login_success_returnsBothTokensAndStoresRefresh() {
         User user = new User();
         user.setId(1L);
         user.setUsername("admin");
         user.setPassword("$2a$10$stored-hash");
-        user.setEnabled(true);   // 确保不被禁用检查拦截
+        user.setEnabled(true);
         when(userMapper.selectOne(any())).thenReturn(user);
         when(passwordEncoder.matches("123456", "$2a$10$stored-hash")).thenReturn(true);
-        when(jwtUtil.generateToken(1L, "admin")).thenReturn("mock-token");
+        when(jwtUtil.generateToken(1L, "admin")).thenReturn("access-token");
+        when(jwtUtil.signRefreshToken(1L, "admin")).thenReturn("refresh-token");
         UserVO vo = new UserVO();
         vo.setId(1L);
         vo.setUsername("admin");
@@ -158,8 +163,96 @@ class AuthServiceTest {
 
         LoginVO result = authService.login(loginReq());
 
-        assertThat(result.getToken()).isEqualTo("mock-token");
+        assertThat(result.getAccessToken()).isEqualTo("access-token");
+        assertThat(result.getRefreshToken()).isEqualTo("refresh-token");
         assertThat(result.getUser().getId()).isEqualTo(1L);
-        assertThat(result.getUser().getUsername()).isEqualTo("admin");
+        verify(refreshTokenService).save(1L, "refresh-token");
+    }
+
+    // ---- refresh ----
+
+    private Claims mockRefreshClaims(Long userId, String username) {
+        return Jwts.claims().subject(String.valueOf(userId))
+                .add("username", username)
+                .add("type", "refresh")
+                .build();
+    }
+
+    @Test
+    void refresh_invalidJwt_throws401() {
+        when(jwtUtil.parseRefreshToken("bad-token"))
+                .thenThrow(new io.jsonwebtoken.JwtException("bad"));
+
+        RefreshRequest req = new RefreshRequest();
+        req.setRefreshToken("bad-token");
+
+        assertThatThrownBy(() -> authService.refresh(req))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(401))
+                .hasMessageContaining("Refresh Token 无效");
+    }
+
+    @Test
+    void refresh_redisMismatch_throws401() {
+        when(jwtUtil.parseRefreshToken("old-refresh"))
+                .thenReturn(mockRefreshClaims(1L, "admin"));
+        when(refreshTokenService.verify(1L, "old-refresh")).thenReturn(false);
+
+        RefreshRequest req = new RefreshRequest();
+        req.setRefreshToken("old-refresh");
+
+        assertThatThrownBy(() -> authService.refresh(req))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(401))
+                .hasMessageContaining("已被吊销");
+    }
+
+    @Test
+    void refresh_userDisabled_throws401() {
+        when(jwtUtil.parseRefreshToken("refresh-token"))
+                .thenReturn(mockRefreshClaims(1L, "admin"));
+        when(refreshTokenService.verify(1L, "refresh-token")).thenReturn(true);
+        User disabled = new User();
+        disabled.setEnabled(false);
+        when(userMapper.selectById(1L)).thenReturn(disabled);
+
+        RefreshRequest req = new RefreshRequest();
+        req.setRefreshToken("refresh-token");
+
+        assertThatThrownBy(() -> authService.refresh(req))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(401))
+                .hasMessageContaining("账号不可用");
+        verify(refreshTokenService).delete(1L);  // 清理残留
+    }
+
+    @Test
+    void refresh_success_rotatesTokens() {
+        when(jwtUtil.parseRefreshToken("old-refresh"))
+                .thenReturn(mockRefreshClaims(1L, "admin"));
+        when(refreshTokenService.verify(1L, "old-refresh")).thenReturn(true);
+        User user = new User();
+        user.setEnabled(true);
+        when(userMapper.selectById(1L)).thenReturn(user);
+        when(jwtUtil.generateToken(1L, "admin")).thenReturn("new-access");
+        when(jwtUtil.signRefreshToken(1L, "admin")).thenReturn("new-refresh");
+
+        RefreshRequest req = new RefreshRequest();
+        req.setRefreshToken("old-refresh");
+
+        LoginVO result = authService.refresh(req);
+
+        assertThat(result.getAccessToken()).isEqualTo("new-access");
+        assertThat(result.getRefreshToken()).isEqualTo("new-refresh");
+        assertThat(result.getUser()).isNull();  // refresh 不返回 user
+        verify(refreshTokenService).save(1L, "new-refresh");  // 轮转
+    }
+
+    // ---- logout ----
+
+    @Test
+    void logout_deletesRefreshToken() {
+        authService.logout(1L);
+        verify(refreshTokenService).delete(1L);
     }
 }

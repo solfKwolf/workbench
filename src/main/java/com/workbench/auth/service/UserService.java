@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.workbench.auth.convert.UserConvert;
+import com.workbench.auth.config.RefreshTokenService;
 import com.workbench.auth.dto.ChangePasswordRequest;
 import com.workbench.auth.dto.UpdateProfileRequest;
 import com.workbench.auth.dto.UserQuery;
@@ -27,6 +28,7 @@ public class UserService {
     private final UserMapper userMapper;
     private final UserConvert userConvert;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenService refreshTokenService;
 
     /** 用户列表（分页 + 动态条件） */
     public PageResult<UserVO> list(UserQuery query) {
@@ -96,6 +98,8 @@ public class UserService {
         }
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));
         userMapper.updateById(user);
+        // 改密码后吊销所有 Refresh Token，强制所有设备重新登录
+        refreshTokenService.delete(userId);
         log.info("用户修改密码成功: {}", user.getUsername());
     }
 
@@ -107,6 +111,10 @@ public class UserService {
         }
         user.setEnabled(enabled);
         userMapper.updateById(user);
+        // 禁用时吊销 Refresh Token，防止禁用后还能 refresh
+        if (!enabled) {
+            refreshTokenService.delete(id);
+        }
         log.info("用户 {} 启用状态变更为: {}", user.getUsername(), enabled);
     }
 

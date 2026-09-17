@@ -61,6 +61,12 @@
             <version>${mybatis-plus.version}</version>
         </dependency>
 
+        <!-- 缓存：Redis（Refresh Token 存储 + 可吊销） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
         <!-- 数据库驱动 / 迁移 -->
         <dependency>
             <groupId>org.postgresql</groupId>

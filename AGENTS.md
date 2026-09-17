@@ -94,3 +94,4 @@ Conventional Commits：`feat:` / `fix:` / `ci:` / `docs:` / `test:` / `refactor:
 5. **git 全局 proxy 127.0.0.1:7890 不稳定**——直连 GitHub 反而更稳，push 报错先检查是不是代理的锅
 6. **Refresh Token 轮转防重放**——偷到一次的 token 只能用一次，用完就被覆盖
 7. **Access Token 无状态**——JwtAuthenticationFilter 不查 Redis，别往里面加 Redis 校验
+8. **GitHub Actions services 的 health-cmd 有空格必须加引号**——`"redis-cli ping"` 不然 Docker 会把 `ping` 当成镜像去 pull（本次踩的坑）

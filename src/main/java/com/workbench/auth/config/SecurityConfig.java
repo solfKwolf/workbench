@@ -1,6 +1,7 @@
 package com.workbench.auth.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,6 +19,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    /** dev profile 才存在，prod 为 null（@Profile("dev") 控制） */
+    @Autowired(required = false)
+    private DevMockUserFilter devMockUserFilter;
 
     /** BCrypt 默认强度 10（2^10 轮哈希），加密 encode / 比对 matches */
     @Bean
@@ -47,6 +52,12 @@ public class SecurityConfig {
             // JWT 过滤器插在用户名密码过滤器之前
             .addFilterBefore(jwtAuthenticationFilter,
                     UsernamePasswordAuthenticationFilter.class);
+
+        // dev 环境 Mock User：插在 JWT 过滤器之后（JWT 没塞 Authentication 时兜底）
+        if (devMockUserFilter != null) {
+            http.addFilterAfter(devMockUserFilter, JwtAuthenticationFilter.class);
+        }
+
         return http.build();
     }
 }

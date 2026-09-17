@@ -73,6 +73,13 @@ docker run -d --name workbench-redis -p 6379:6379 redis:7-alpine
 - `/api/auth/logout` 需要有效的 Access Token
 - 其他所有 `/api/**` 默认需要鉴权
 
+### Dev 调试：Mock User 快捷登录
+- **dev profile** 下可通过请求头 `x-mock-user-id: <userId>` 绕过 JWT，直接以该用户身份访问接口
+- 对应类：`DevMockUserFilter`（`@Profile("dev")`，prod 完全不存在）
+- **不会覆盖 JWT**：JwtAuthenticationFilter 已经塞了 Authentication 就跳过 mock
+- Knfie4j 全局参数加 `x-mock-user-id: 1`，所有调试请求自动以 admin 身份通过鉴权
+- prod 调试接口**必须走正常登录流程**，不能用 mock
+
 ### 数据库
 - MyBatis-Plus 逻辑删除：`deleted` 字段（0=未删，1=已删）
 - 分页用 `Page<T>` + `IPage<T>`，**不要自己写 limit offset**
